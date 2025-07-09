@@ -1,4 +1,5 @@
 import os
+import sys
 import pandas as pd
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet
@@ -10,11 +11,14 @@ from reportlab.lib.pagesizes import letter
 
 
 # --- Configuration ---
-# IMPORTANT: Place your logo image (e.g., 'logo.png') in the same directory as this script,
-# or provide the full, absolute path to the image file here.
-LOGO_LEFT_PATH = 'Jims_logo.jpg'
-# Add the path for the second logo, which will appear in the center.
-LOGO_CENTER_PATH = 'Jims_name.jpg' # Example: place 'second_logo.png' in the same folder
+def resource_path(relative_path):
+    """ Get absolute path to resource for PyInstaller """
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
+
+LOGO_LEFT_PATH = resource_path('Jims_logo.jpg')
+LOGO_CENTER_PATH = resource_path('Jims_name.jpg') 
 
 
 def create_receipt_pdf(data_row: pd.Series, file_path: str):

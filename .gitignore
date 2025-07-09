@@ -1,0 +1,5 @@
+main.spec
+build/
+dist/
+__pycache__
+Book1.xlsx

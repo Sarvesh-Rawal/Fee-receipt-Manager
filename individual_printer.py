@@ -40,6 +40,6 @@ def print_single_receipt_from_df(parent: QWidget, df: pd.DataFrame, row_index: i
 
     if create_receipt_pdf(row_data, full_path):
         print_file_handler(full_path)
-        QMessageBox.information(parent, "Success", f"Successfully saved receipt:\n{os.path.basename(full_path)}")
+        print(f"Successfully saved receipt: {os.path.basename(full_path)}")
     else:
         QMessageBox.warning(parent, "PDF Error", "Failed to create the PDF receipt.")

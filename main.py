@@ -1,5 +1,6 @@
 import sys
 import os
+import subprocess
 import pandas as pd
 from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton, QVBoxLayout, QFileDialog, QTableWidget, QMessageBox,
                              QLineEdit, QGroupBox)
@@ -101,32 +102,34 @@ class MainWindow(QWidget):
 
     def _print_file(self, filepath):
         """
-        Sends a file to the default printer.
-        This implementation is primarily for Windows.
+        Sends a file to the default printer. If direct printing fails,
+        it logs the error to the terminal and opens the file for manual printing.
         """
         try:
-            if sys.platform != "win32":
-                QMessageBox.information(self, "Printing Not Supported",
-                                      f"Automatic printing is not supported on your operating system ({sys.platform}).\n"
-                                      f"You can find the saved PDF here:\n{filepath}")
-                return
-
-            os.startfile(filepath, "print")
-        except OSError as e:
-            if e.winerror == 1155:  # No application associated for printing
-                reply = QMessageBox.question(self, "Printing Error",
-                                             "Could not print automatically because no default PDF printing application is set up.\n\n"
-                                             "Would you like to open the file to print it manually?",
-                                             QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
-                if reply == QMessageBox.Yes:
-                    try:
-                        os.startfile(filepath)
-                    except Exception as open_e:
-                        QMessageBox.warning(self, "File Open Error", f"Could not open the file.\nError: {open_e}")
+            if sys.platform == "win32":
+                os.startfile(filepath, "print")
+            elif sys.platform == "darwin":  # macOS
+                subprocess.run(["lp", filepath], check=True)
+            elif sys.platform.startswith("linux"):  # Linux
+                subprocess.run(["lp", filepath], check=True)
             else:
-                QMessageBox.warning(self, "Print Error", f"Could not print file: {os.path.basename(filepath)}\nError: {e}")
+                raise NotImplementedError(f"Automatic printing not supported on {sys.platform}")
+
         except Exception as e:
-            QMessageBox.warning(self, "Print Error", f"Could not print file: {os.path.basename(filepath)}\nError: {e}")
+            # Automatic printing failed. Log the error to the terminal.
+            print(f"PRINTING_ERROR: Could not print '{os.path.basename(filepath)}' automatically. Reason: {e}", file=sys.stderr)
+            print("INFO: Fallback - attempting to open file for manual printing.", file=sys.stderr)
+            try:
+                # Cross-platform fallback to open the file in the default viewer.
+                if sys.platform == "win32":
+                    os.startfile(filepath)
+                elif sys.platform == "darwin":
+                    subprocess.run(["open", filepath], check=True)
+                else: # linux and other unix
+                    subprocess.run(["xdg-open", filepath], check=True)
+            except Exception as open_e:
+                # If opening the file also fails, log that critical error to the terminal.
+                print(f"CRITICAL_ERROR: Could not open '{filepath}' for manual printing. Reason: {open_e}", file=sys.stderr)
 
     def print_single_receipt(self, row_index):
         """Wrapper to call the individual receipt printing logic from the new file."""
@@ -193,10 +196,7 @@ class MainWindow(QWidget):
                 error_count += 1
 
         # Provide feedback to the user
-        summary_message = f"Successfully saved: {success_count} receipts."
-        if error_count > 0:
-            summary_message += f"\nFailed to save: {error_count} receipts. See console for errors."
-        QMessageBox.information(self, "PDF Generation Complete", summary_message)
+        print(f"PDF Generation Complete. Success: {success_count}, Failed: {error_count}")
 
         # Unselect all checkboxes after the operation is complete.
         # We iterate over a copy of the set because unchecking the box will

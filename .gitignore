@@ -2,3 +2,4 @@ main.spec
 build/
 dist/
 __pycache__
+FeeReceiptGenerator.spec

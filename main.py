@@ -2,14 +2,21 @@ import sys
 import os
 import subprocess
 import pandas as pd
-from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton, QVBoxLayout, QFileDialog, QTableWidget, QMessageBox,
-                             QLineEdit, QGroupBox)
+from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton, QVBoxLayout, QFileDialog, QTableWidget, QMessageBox, QFrame,
+                             QLineEdit, QGroupBox, QLabel, QHBoxLayout)
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPixmap, QFontMetrics, QFont
 from upload_excel import upload_file  # Import the function
 from excel_viewer import display_excel_data  # Import the new function
 from pdf_generator import create_receipt_pdf # Import the new PDF generator
 from table_filter import filter_table_by_name # Import the new filter function
 from individual_printer import print_single_receipt_from_df # Import the new individual print logic
+
+def resource_path(relative_path):
+    """ Get absolute path to resource for PyInstaller """
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
 
 
 class MainWindow(QWidget):
@@ -19,8 +26,8 @@ class MainWindow(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Excel File Viewer")
-        self.setMinimumSize(1120, 600)
+        self.setWindowTitle("Admission Reciept 2025")
+        self.setMinimumSize(1120, 800)
 
         # --- State Management ---
         self.name_column_table_index = -1  # The index of the name column in the QTableWidget
@@ -29,9 +36,24 @@ class MainWindow(QWidget):
 
         # --- Widgets ---
         self.upload_button = QPushButton("Upload Excel File")
+        self.upload_button.setMinimumHeight(40)  # Increase button height
         self.search_bar = QLineEdit()
+        self.search_bar.setMinimumHeight(33)  # Increase search bar height
         self.search_bar.setPlaceholderText("Search by Name...")
         self.print_receipts_button = QPushButton("Print Receipt(s)")
+        self.print_receipts_button.setMinimumHeight(40)  # Increase button height
+
+        # --- Set Button Font ---
+        button_font = QFont()
+        button_font.setPointSize(11) # Set a larger font size for the button text
+        self.upload_button.setFont(button_font)
+        self.print_receipts_button.setFont(button_font)
+
+        # --- Set Button Style ---
+        button_style = "background-color: #2b2e9b; color: white; border-radius: 5px;"
+        self.upload_button.setStyleSheet(button_style)
+        self.print_receipts_button.setStyleSheet(button_style)
+
         self.table_widget = QTableWidget()
         # Make the table read-only to prevent accidental edits
         self.table_widget.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -40,7 +62,92 @@ class MainWindow(QWidget):
 
         # --- Layout ---
         main_layout = QVBoxLayout(self)
-        main_layout.addWidget(self.upload_button)
+
+        # --- Logo Container ---
+        logo_container = QWidget()
+        logo_layout = QHBoxLayout(logo_container)
+        logo_layout.setContentsMargins(10, 10, 10, 10) # Add padding on all sides
+
+        # --- Left Logo (Jims_logo.jpg) ---
+        logo_left_label = QLabel()
+        logo_left_path = resource_path('Jims_logo-removebg-preview.png')
+        pixmap_left = None
+        if os.path.exists(logo_left_path):
+            pixmap_left = QPixmap(logo_left_path)
+            # Scale to a height to keep proportions, as it's more square
+            logo_left_label.setPixmap(pixmap_left.scaledToHeight(125, Qt.SmoothTransformation))
+            logo_left_label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+
+        # --- Center Logo (Jims_name.jpg) ---
+        logo_center_label = QLabel()
+        logo_center_path = resource_path('Jims_name-removebg-preview.png')
+        if os.path.exists(logo_center_path):
+            pixmap_center = QPixmap(logo_center_path)
+            # Define a fixed height for the logo, matching the left logo for alignment.
+            logo_height = 110
+            # Scale to a fixed width and height, ignoring the aspect ratio.
+            # This will distort the image if the new dimensions don't match the original ratio.
+            logo_center_label.setPixmap(pixmap_center.scaled(500, logo_height, Qt.IgnoreAspectRatio, Qt.SmoothTransformation))
+            logo_center_label.setAlignment(Qt.AlignCenter | Qt.AlignTop)
+
+        # Use a dummy widget on the right to balance the left logo, ensuring the center logo is truly centered.
+        dummy_widget = QWidget()
+        if pixmap_left:
+            # The dummy widget must have the same width as the visible pixmap on the left label.
+            dummy_widget.setFixedWidth(80)
+
+        # Add widgets to the layout to achieve the desired alignment.
+        logo_layout.addWidget(logo_left_label)
+        logo_layout.addStretch()
+        logo_layout.addWidget(logo_center_label)
+        logo_layout.addStretch()
+        logo_layout.addWidget(dummy_widget)
+
+        # Add the container to the main layout
+        main_layout.addWidget(logo_container)
+
+        # --- Horizontal Line Separator ---
+        line = QFrame()
+        line.setFrameShape(QFrame.HLine)
+        line.setFrameShadow(QFrame.Sunken) # This provides a 3D sunken line, which is typically grey
+        main_layout.addWidget(line)
+
+        # Add some vertical space between the line and the title
+        main_layout.addSpacing(10)
+
+        # --- Title Label ---
+        title_label = QLabel("Admission Reciept 2025")
+        title_label.setAlignment(Qt.AlignCenter)
+        # Make the font bigger and bold for emphasis
+        font = title_label.font()
+        font.setPointSize(16)
+        font.setBold(True)
+        title_label.setFont(font)
+        main_layout.addWidget(title_label)
+
+        # --- Set Button Width to Match Title ---
+        # Calculate the pixel width of the title label to make the button match
+        fm = QFontMetrics(font)
+        text_width = fm.width("Admission Reciept 2025")
+        # Add some horizontal padding for a better look
+        button_width = text_width + 40
+        self.upload_button.setFixedWidth(button_width)
+        self.print_receipts_button.setFixedWidth(button_width)
+
+        # Add some vertical space between the title and the upload button
+        main_layout.addSpacing(15)
+
+        # --- Upload Section ---
+        # Use a container to place a label next to the button
+        upload_container = QWidget()
+        upload_layout = QHBoxLayout(upload_container)
+        upload_layout.setContentsMargins(0, 0, 0, 0) # Remove layout's own margins
+
+        upload_layout.addStretch() # Add stretch before to start centering
+        upload_layout.addWidget(self.upload_button)
+        upload_layout.addStretch() # Add stretch after to finish centering
+
+        main_layout.addWidget(upload_container)
 
         # Use a QGroupBox for a visually and structurally robust container
         table_group_box = QGroupBox("Data Table")
@@ -51,7 +158,15 @@ class MainWindow(QWidget):
         # Add the group box to the main layout with a stretch factor.
         # This makes the entire table area expand and shrink with the window.
         main_layout.addWidget(table_group_box, 1)
-        main_layout.addWidget(self.print_receipts_button)
+
+        # --- Print Section ---
+        print_container = QWidget()
+        print_layout = QHBoxLayout(print_container)
+        print_layout.setContentsMargins(0, 0, 0, 0)
+        print_layout.addStretch()
+        print_layout.addWidget(self.print_receipts_button)
+        print_layout.addStretch()
+        main_layout.addWidget(print_container)
 
         # --- Connections ---
         self.upload_button.clicked.connect(self.upload_file)
@@ -107,8 +222,10 @@ class MainWindow(QWidget):
         """
         try:
             if sys.platform == "win32":
+                # Use the default Windows shell command for printing.
                 os.startfile(filepath, "print")
             elif sys.platform == "darwin":  # macOS
+                # lp is the standard printing command on macOS.
                 subprocess.run(["lp", filepath], check=True)
             elif sys.platform.startswith("linux"):  # Linux
                 subprocess.run(["lp", filepath], check=True)

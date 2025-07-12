@@ -1,5 +1,5 @@
 import pandas as pd
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QMessageBox, QCheckBox, QPushButton
+from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QMessageBox, QCheckBox, QPushButton, QWidget, QHBoxLayout
 from PyQt5.QtCore import Qt
 
 def display_excel_data(file_path, table_widget, selection_handler, print_handler):
@@ -35,9 +35,17 @@ def display_excel_data(file_path, table_widget, selection_handler, print_handler
         for row_idx in range(df.shape[0]):
             # --- Checkbox Column ---
             checkbox = QCheckBox()
-            # Connect the checkbox signal to the handler provided by MainWindow
+            # Make the checkbox larger and easier to click
+            checkbox.setStyleSheet("QCheckBox::indicator { width: 25px; height: 25px; }")
             checkbox.stateChanged.connect(lambda state, r=row_idx: selection_handler(state, r))
-            table_widget.setCellWidget(row_idx, 0, checkbox)
+
+            # To center the checkbox, we place it inside a container widget with a layout
+            container = QWidget()
+            layout = QHBoxLayout(container)
+            layout.addWidget(checkbox)
+            layout.setAlignment(Qt.AlignCenter)
+            layout.setContentsMargins(0, 0, 0, 0)
+            table_widget.setCellWidget(row_idx, 0, container)
 
             # --- Data Columns ---
             for col_idx in range(df.shape[1]):
@@ -47,12 +55,18 @@ def display_excel_data(file_path, table_widget, selection_handler, print_handler
 
             # --- Print Button Column ---
             print_button = QPushButton("Print")
+            print_button.setMinimumHeight(30) # Increase button height
             print_button.clicked.connect(lambda checked, r=row_idx: print_handler(r))
             # Place button in the last column
             table_widget.setCellWidget(row_idx, df.shape[1] + 1, print_button)
 
         # Resize columns to fit content for better viewing
         table_widget.resizeColumnsToContents()
+
+        # Set a minimum row height to ensure our larger widgets fit well
+        for i in range(table_widget.rowCount()):
+            table_widget.setRowHeight(i, 40)
+
         return df  # Return the dataframe for state management
     except FileNotFoundError:
         QMessageBox.critical(None, "Error", f"File not found:\n{file_path}")
